@@ -45,23 +45,6 @@ enum KnownProtocols {
   TLS = 1;
 }
 
-message SniffingConfig {
-  // Whether or not to enable content sniffing on an inbound connection.
-  bool enabled = 1;
-
-  // Override target destination if sniff'ed protocol is in the given list.
-  // Supported values are "http", "tls", "fakedns".
-  repeated string destination_override = 2;
-  repeated string domains_excluded = 3;
-
-  // Whether should only try to sniff metadata without waiting for client input.
-  // Can be used to support SMTP like protocol where server send the first
-  // message.
-  bool metadata_only = 4;
-
-  bool route_only = 5;
-}
-
 message ReceiverConfig {
   // PortList specifies the ports which the Receiver should listen on.
   xray.common.net.PortList port_list = 1;
@@ -74,7 +57,6 @@ message ReceiverConfig {
   // Override domains for the given protocol.
   // Deprecated. Use sniffing_settings.
   repeated KnownProtocols domain_override = 7 [ deprecated = true ];
-  SniffingConfig sniffing_settings = 8;
 }
 
 message InboundHandlerConfig {
