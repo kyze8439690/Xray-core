@@ -53,7 +53,6 @@ import (
 	_ "github.com/xtls/xray-core/transport/internet/headers/noop"
 	_ "github.com/xtls/xray-core/transport/internet/headers/srtp"
 	_ "github.com/xtls/xray-core/transport/internet/headers/tls"
-	_ "github.com/xtls/xray-core/transport/internet/headers/utp"
 
 	// JSON & TOML & YAML
 	_ "github.com/xtls/xray-core/main/json"
