@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	goreality "github.com/xtls/reality"
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/session"
@@ -18,12 +17,12 @@ import (
 
 // Listener is an internet.Listener that listens for TCP connections.
 type Listener struct {
-	listener      net.Listener
-	tlsConfig     *gotls.Config
-	realityConfig *goreality.Config
-	authConfig    internet.ConnectionAuthenticator
-	config        *Config
-	addConn       internet.ConnHandler
+	listener   net.Listener
+	tlsConfig  *gotls.Config
+	authConfig internet.ConnectionAuthenticator
+	config     *Config
+	addConn    internet.ConnHandler
+	locker     *internet.FileLocker // for unix domain socket
 }
 
 // ListenTCP creates a new Listener based on configurations.
@@ -70,9 +69,6 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
 		l.tlsConfig = config.GetTLSConfig()
 	}
-	if config := reality.ConfigFromStreamSettings(streamSettings); config != nil {
-		l.realityConfig = config.GetREALITYConfig()
-	}
 
 	if tcpSettings.HeaderSettings != nil {
 		headerConfig, err := tcpSettings.HeaderSettings.GetInstance()
@@ -104,20 +100,15 @@ func (v *Listener) keepAccepting() {
 			}
 			continue
 		}
-		go func() {
-			if v.tlsConfig != nil {
-				conn = tls.Server(conn, v.tlsConfig)
-			} else if v.realityConfig != nil {
-				if conn, err = reality.Server(conn, v.realityConfig); err != nil {
-					newError(err).AtInfo().WriteToLog()
-					return
-				}
-			}
-			if v.authConfig != nil {
-				conn = v.authConfig.Server(conn)
-			}
-			v.addConn(stat.Connection(conn))
-		}()
+
+		if v.tlsConfig != nil {
+			conn = tls.Server(conn, v.tlsConfig)
+		}
+		if v.authConfig != nil {
+			conn = v.authConfig.Server(conn)
+		}
+
+		v.addConn(stat.Connection(conn))
 	}
 }
 

@@ -30,10 +30,6 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 		} else {
 			conn = tls.Client(conn, tlsConfig)
 		}
-	} else if config := reality.ConfigFromStreamSettings(streamSettings); config != nil {
-		if conn, err = reality.UClient(conn, config, ctx, dest); err != nil {
-			return nil, err
-		}
 	}
 
 	tcpSettings := streamSettings.ProtocolSettings.(*Config)
