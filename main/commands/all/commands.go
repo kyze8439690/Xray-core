@@ -9,9 +9,5 @@ import (
 func init() {
 	base.RootCommand.Commands = append(
 		base.RootCommand.Commands,
-		// cmdConvert,
-		cmdUUID,
-		cmdX25519,
-		cmdWG,
 	)
 }
