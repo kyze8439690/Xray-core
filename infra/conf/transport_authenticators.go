@@ -8,7 +8,6 @@ import (
 	"github.com/xtls/xray-core/transport/internet/headers/noop"
 	"github.com/xtls/xray-core/transport/internet/headers/srtp"
 	"github.com/xtls/xray-core/transport/internet/headers/tls"
-	"github.com/xtls/xray-core/transport/internet/headers/utp"
 )
 
 type NoOpAuthenticator struct{}
@@ -27,12 +26,6 @@ type SRTPAuthenticator struct{}
 
 func (SRTPAuthenticator) Build() (proto.Message, error) {
 	return new(srtp.Config), nil
-}
-
-type UTPAuthenticator struct{}
-
-func (UTPAuthenticator) Build() (proto.Message, error) {
-	return new(utp.Config), nil
 }
 
 type DTLSAuthenticator struct{}
