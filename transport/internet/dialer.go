@@ -81,7 +81,6 @@ func lookupIP(domain string, strategy DomainStrategy, localAddr net.Address) ([]
 	option := dns.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-		FakeEnable: false,
 	}
 
 	switch {
@@ -89,13 +88,11 @@ func lookupIP(domain string, strategy DomainStrategy, localAddr net.Address) ([]
 		option = dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: false,
-			FakeEnable: false,
 		}
 	case strategy == DomainStrategy_USE_IP6 || (localAddr != nil && localAddr.Family().IsIPv6()):
 		option = dns.IPOption{
 			IPv4Enable: false,
 			IPv6Enable: true,
-			FakeEnable: false,
 		}
 	case strategy == DomainStrategy_AS_IS:
 		return nil, nil

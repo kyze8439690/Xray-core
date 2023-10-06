@@ -26,7 +26,6 @@ type DNS struct {
 	disableFallback        bool
 	disableFallbackIfMatch bool
 	ipOption               *dns.IPOption
-	hosts                  *StaticHosts
 	clients                []*Client
 	ctx                    context.Context
 	domainMatcher          strmatcher.IndexMatcher
@@ -62,25 +61,17 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		ipOption = &dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: true,
-			FakeEnable: false,
 		}
 	case QueryStrategy_USE_IP4:
 		ipOption = &dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: false,
-			FakeEnable: false,
 		}
 	case QueryStrategy_USE_IP6:
 		ipOption = &dns.IPOption{
 			IPv4Enable: false,
 			IPv6Enable: true,
-			FakeEnable: false,
 		}
-	}
-
-	hosts, err := NewStaticHosts(config.StaticHosts, config.Hosts)
-	if err != nil {
-		return nil, newError("failed to create hosts").Base(err)
 	}
 
 	clients := []*Client{}
@@ -132,7 +123,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 
 	return &DNS{
 		tag:                    tag,
-		hosts:                  hosts,
 		ipOption:               ipOption,
 		clients:                clients,
 		ctx:                    ctx,
@@ -183,28 +173,10 @@ func (s *DNS) LookupIP(domain string, option dns.IPOption) ([]net.IP, error) {
 		domain = domain[:len(domain)-1]
 	}
 
-	// Static host lookup
-	switch addrs := s.hosts.Lookup(domain, option); {
-	case addrs == nil: // Domain not recorded in static host
-		break
-	case len(addrs) == 0: // Domain recorded, but no valid IP returned (e.g. IPv4 address with only IPv6 enabled)
-		return nil, dns.ErrEmptyResponse
-	case len(addrs) == 1 && addrs[0].Family().IsDomain(): // Domain replacement
-		newError("domain replaced: ", domain, " -> ", addrs[0].Domain()).WriteToLog()
-		domain = addrs[0].Domain()
-	default: // Successfully found ip records in static host
-		newError("returning ", len(addrs), " IP(s) for domain ", domain, " -> ", addrs).WriteToLog()
-		return toNetIP(addrs)
-	}
-
 	// Name servers lookup
 	errs := []error{}
 	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
 	for _, client := range s.sortClients(domain) {
-		if !option.FakeEnable && strings.EqualFold(client.Name(), "FakeDNS") {
-			newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
-			continue
-		}
 		ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
 		if len(ips) > 0 {
 			return ips, nil
@@ -221,22 +193,6 @@ func (s *DNS) LookupIP(domain string, option dns.IPOption) ([]net.IP, error) {
 	return nil, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
 }
 
-// LookupHosts implements dns.HostsLookup.
-func (s *DNS) LookupHosts(domain string) *net.Address {
-	domain = strings.TrimSuffix(domain, ".")
-	if domain == "" {
-		return nil
-	}
-	// Normalize the FQDN form query
-	addrs := s.hosts.Lookup(domain, *s.ipOption)
-	if len(addrs) > 0 {
-		newError("domain replaced: ", domain, " -> ", addrs[0].String()).AtInfo().WriteToLog()
-		return &addrs[0]
-	}
-
-	return nil
-}
-
 // GetIPOption implements ClientWithIPOption.
 func (s *DNS) GetIPOption() *dns.IPOption {
 	return s.ipOption
@@ -246,11 +202,6 @@ func (s *DNS) GetIPOption() *dns.IPOption {
 func (s *DNS) SetQueryOption(isIPv4Enable, isIPv6Enable bool) {
 	s.ipOption.IPv4Enable = isIPv4Enable
 	s.ipOption.IPv6Enable = isIPv6Enable
-}
-
-// SetFakeDNSOption implements ClientWithIPOption.
-func (s *DNS) SetFakeDNSOption(isFakeEnable bool) {
-	s.ipOption.FakeEnable = isFakeEnable
 }
 
 func (s *DNS) sortClients(domain string) []*Client {
