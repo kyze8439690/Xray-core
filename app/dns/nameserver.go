@@ -8,7 +8,6 @@ import (
 
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/common/strmatcher"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/dns"
 	"github.com/xtls/xray-core/features/routing"
@@ -71,54 +70,8 @@ func NewClient(
 			return newError("failed to create nameserver").Base(err).AtWarning()
 		}
 
-		// Priotize local domains with specific TLDs or without any dot to local DNS
-		if _, isLocalDNS := server.(*LocalNameServer); isLocalDNS {
-			ns.PrioritizedDomain = append(ns.PrioritizedDomain, localTLDsAndDotlessDomains...)
-			ns.OriginalRules = append(ns.OriginalRules, localTLDsAndDotlessDomainsRule)
-			// The following lines is a solution to avoid core panics（rule index out of range） when setting `localhost` DNS client in config.
-			// Because the `localhost` DNS client will apend len(localTLDsAndDotlessDomains) rules into matcherInfos to match `geosite:private` default rule.
-			// But `matcherInfos` has no enough length to add rules, which leads to core panics (rule index out of range).
-			// To avoid this, the length of `matcherInfos` must be equal to the expected, so manually append it with Golang default zero value first for later modification.
-			// Related issues:
-			// https://github.com/v2fly/v2ray-core/issues/529
-			// https://github.com/v2fly/v2ray-core/issues/719
-			for i := 0; i < len(localTLDsAndDotlessDomains); i++ {
-				*matcherInfos = append(*matcherInfos, &DomainMatcherInfo{
-					clientIdx:     uint16(0),
-					domainRuleIdx: uint16(0),
-				})
-			}
-		}
-
 		// Establish domain rules
 		var rules []string
-		ruleCurr := 0
-		ruleIter := 0
-		for _, domain := range ns.PrioritizedDomain {
-			domainRule, err := toStrMatcher(domain.Type, domain.Domain)
-			if err != nil {
-				return newError("failed to create prioritized domain").Base(err).AtWarning()
-			}
-			originalRuleIdx := ruleCurr
-			if ruleCurr < len(ns.OriginalRules) {
-				rule := ns.OriginalRules[ruleCurr]
-				if ruleCurr >= len(rules) {
-					rules = append(rules, rule.Rule)
-				}
-				ruleIter++
-				if ruleIter >= int(rule.Size) {
-					ruleIter = 0
-					ruleCurr++
-				}
-			} else { // No original rule, generate one according to current domain matcher (majorly for compatibility with tests)
-				rules = append(rules, domainRule.String())
-				ruleCurr++
-			}
-			err = updateDomainRule(domainRule, originalRuleIdx, *matcherInfos)
-			if err != nil {
-				return newError("failed to create prioritized domain").Base(err).AtWarning()
-			}
-		}
 
 		if len(clientIP) > 0 {
 			switch ns.Address.Address.GetAddress().(type) {

@@ -5,7 +5,6 @@ package dns
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/session"
-	"github.com/xtls/xray-core/common/strmatcher"
 	"github.com/xtls/xray-core/features"
 	"github.com/xtls/xray-core/features/dns"
 )
@@ -28,14 +26,6 @@ type DNS struct {
 	ipOption               *dns.IPOption
 	clients                []*Client
 	ctx                    context.Context
-	domainMatcher          strmatcher.IndexMatcher
-	matcherInfos           []*DomainMatcherInfo
-}
-
-// DomainMatcherInfo contains information attached to index returned by Server.domainMatcher
-type DomainMatcherInfo struct {
-	clientIdx     uint16
-	domainRuleIdx uint16
 }
 
 // New creates a new DNS server with given configuration.
@@ -75,14 +65,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	}
 
 	clients := []*Client{}
-	domainRuleCount := 0
-	for _, ns := range config.NameServer {
-		domainRuleCount += len(ns.PrioritizedDomain)
-	}
-
-	// MatcherInfos is ensured to cover the maximum index domainMatcher could return, where matcher's index starts from 1
-	matcherInfos := make([]*DomainMatcherInfo, domainRuleCount+1)
-	domainMatcher := &strmatcher.MatcherGroup{}
 
 	for _, endpoint := range config.NameServers {
 		features.PrintDeprecatedFeatureWarning("simple DNS server")
@@ -94,22 +76,13 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	}
 
 	for _, ns := range config.NameServer {
-		clientIdx := len(clients)
-		updateDomain := func(domainRule strmatcher.Matcher, originalRuleIdx int, matcherInfos []*DomainMatcherInfo) error {
-			midx := domainMatcher.Add(domainRule)
-			matcherInfos[midx] = &DomainMatcherInfo{
-				clientIdx:     uint16(clientIdx),
-				domainRuleIdx: uint16(originalRuleIdx),
-			}
-			return nil
-		}
 
 		myClientIP := clientIP
 		switch len(ns.ClientIp) {
 		case net.IPv4len, net.IPv6len:
 			myClientIP = net.IP(ns.ClientIp)
 		}
-		client, err := NewClient(ctx, ns, myClientIP, &matcherInfos, updateDomain)
+		client, err := NewClient(ctx, ns, myClientIP)
 		if err != nil {
 			return nil, newError("failed to create client").Base(err)
 		}
@@ -126,8 +99,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		ipOption:               ipOption,
 		clients:                clients,
 		ctx:                    ctx,
-		domainMatcher:          domainMatcher,
-		matcherInfos:           matcherInfos,
 		disableCache:           config.DisableCache,
 		disableFallback:        config.DisableFallback,
 		disableFallbackIfMatch: config.DisableFallbackIfMatch,
@@ -211,23 +182,7 @@ func (s *DNS) sortClients(domain string) []*Client {
 	clientNames := make([]string, 0, len(s.clients))
 	domainRules := []string{}
 
-	// Priority domain matching
-	hasMatch := false
-	for _, match := range s.domainMatcher.Match(domain) {
-		info := s.matcherInfos[match]
-		client := s.clients[info.clientIdx]
-		domainRule := client.domains[info.domainRuleIdx]
-		domainRules = append(domainRules, fmt.Sprintf("%s(DNS idx:%d)", domainRule, info.clientIdx))
-		if clientUsed[info.clientIdx] {
-			continue
-		}
-		clientUsed[info.clientIdx] = true
-		clients = append(clients, client)
-		clientNames = append(clientNames, client.Name())
-		hasMatch = true
-	}
-
-	if !(s.disableFallback || s.disableFallbackIfMatch && hasMatch) {
+	if !(s.disableFallback) {
 		// Default round-robin query
 		for idx, client := range s.clients {
 			if clientUsed[idx] || client.skipFallback {
