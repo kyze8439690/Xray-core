@@ -50,7 +50,7 @@ import (
 	// Transport headers
 	_ "github.com/xtls/xray-core/transport/internet/headers/http"
 
-	// JSON & TOML & YAML
+	// JSON
 	_ "github.com/xtls/xray-core/main/json"
 
 	// Load config from file or http(s)
