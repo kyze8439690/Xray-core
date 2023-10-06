@@ -17,7 +17,6 @@ import (
 type Router struct {
 	domainStrategy Config_DomainStrategy
 	rules          []*Rule
-	balancers      map[string]*Balancer
 	dns            dns.Client
 }
 
@@ -33,16 +32,6 @@ func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm out
 	r.domainStrategy = config.DomainStrategy
 	r.dns = d
 
-	r.balancers = make(map[string]*Balancer, len(config.BalancingRule))
-	for _, rule := range config.BalancingRule {
-		balancer, err := rule.Build(ohm, dispatcher)
-		if err != nil {
-			return err
-		}
-		balancer.InjectContext(ctx)
-		r.balancers[rule.Tag] = balancer
-	}
-
 	r.rules = make([]*Rule, 0, len(config.Rule))
 	for _, rule := range config.Rule {
 		cond, err := rule.BuildCondition()
@@ -52,14 +41,6 @@ func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm out
 		rr := &Rule{
 			Condition: cond,
 			Tag:       rule.GetTag(),
-		}
-		btag := rule.GetBalancingTag()
-		if len(btag) > 0 {
-			brule, found := r.balancers[btag]
-			if !found {
-				return newError("balancer ", btag, " not found")
-			}
-			rr.Balancer = brule
 		}
 		r.rules = append(r.rules, rr)
 	}
