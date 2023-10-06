@@ -15,7 +15,6 @@ import (
 
 // Router is an implementation of routing.Router.
 type Router struct {
-	domainStrategy Config_DomainStrategy
 	rules          []*Rule
 	dns            dns.Client
 }
@@ -29,7 +28,6 @@ type Route struct {
 
 // Init initializes the Router.
 func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm outbound.Manager) error {
-	r.domainStrategy = config.DomainStrategy
 	r.dns = d
 
 	r.rules = make([]*Rule, 0, len(config.Rule))
@@ -62,23 +60,10 @@ func (r *Router) PickRoute(ctx routing.Context) (routing.Route, error) {
 }
 
 func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context, error) {
-	// SkipDNSResolve is set from DNS module.
-	// the DOH remote server maybe a domain name,
-	// this prevents cycle resolving dead loop
-	skipDNSResolve := ctx.GetSkipDNSResolve()
-
-	if r.domainStrategy == Config_IpOnDemand && !skipDNSResolve {
-		ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
-	}
-
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
 		}
-	}
-
-	if r.domainStrategy != Config_IpIfNonMatch || len(ctx.GetTargetDomain()) == 0 || skipDNSResolve {
-		return nil, ctx, common.ErrNoClue
 	}
 
 	ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
