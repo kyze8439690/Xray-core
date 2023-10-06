@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xtls/xray-core/app/router"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/strmatcher"
@@ -29,7 +28,6 @@ type Client struct {
 	clientIP     net.IP
 	skipFallback bool
 	domains      []string
-	expectIPs    []*router.GeoIPMatcher
 }
 
 var errExpectedIPNonMatch = errors.New("expectIPs not match")
@@ -134,16 +132,6 @@ func NewClient(
 			}
 		}
 
-		// Establish expected IPs
-		var matchers []*router.GeoIPMatcher
-		for _, geoip := range ns.Geoip {
-			matcher, err := container.Add(geoip)
-			if err != nil {
-				return newError("failed to create ip matcher").Base(err).AtWarning()
-			}
-			matchers = append(matchers, matcher)
-		}
-
 		if len(clientIP) > 0 {
 			switch ns.Address.Address.GetAddress().(type) {
 			case *net.IPOrDomain_Domain:
@@ -157,7 +145,6 @@ func NewClient(
 		client.clientIP = clientIP
 		client.skipFallback = ns.SkipFallback
 		client.domains = rules
-		client.expectIPs = matchers
 		return nil
 	})
 	return client, err
@@ -202,28 +189,7 @@ func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption
 	if err != nil {
 		return ips, err
 	}
-	return c.MatchExpectedIPs(domain, ips)
-}
-
-// MatchExpectedIPs matches queried domain IPs with expected IPs and returns matched ones.
-func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error) {
-	if len(c.expectIPs) == 0 {
-		return ips, nil
-	}
-	newIps := []net.IP{}
-	for _, ip := range ips {
-		for _, matcher := range c.expectIPs {
-			if matcher.Match(ip) {
-				newIps = append(newIps, ip)
-				break
-			}
-		}
-	}
-	if len(newIps) == 0 {
-		return nil, errExpectedIPNonMatch
-	}
-	newError("domain ", domain, " expectIPs ", newIps, " matched at server ", c.Name()).AtDebug().WriteToLog()
-	return newIps, nil
+	return ips, nil
 }
 
 func ResolveIpOptionOverride(queryStrategy QueryStrategy, ipOption dns.IPOption) dns.IPOption {
