@@ -15,7 +15,6 @@ import (
 	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/routing"
-	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/transport/internet"
 )
 
@@ -214,7 +213,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 		{dns.ClientType(), localdns.New()},
 		{policy.ManagerType(), policy.DefaultManager{}},
 		{routing.RouterType(), routing.DefaultRouter{}},
-		{stats.ManagerType(), stats.NoopManager{}},
 	}
 
 	for _, f := range essentialFeatures {
