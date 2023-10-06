@@ -10,14 +10,12 @@ import (
 // Instance is an instance of Policy manager.
 type Instance struct {
 	levels map[uint32]*Policy
-	system *SystemPolicy
 }
 
 // New creates new Policy manager instance.
-func New(ctx context.Context, config *Config) (*Instance, error) {
+func New(config *Config) (*Instance, error) {
 	m := &Instance{
 		levels: make(map[uint32]*Policy),
-		system: config.System,
 	}
 	if len(config.Level) > 0 {
 		for lv, p := range config.Level {
@@ -43,14 +41,6 @@ func (m *Instance) ForLevel(level uint32) policy.Session {
 	return policy.SessionDefault()
 }
 
-// ForSystem implements policy.Manager.
-func (m *Instance) ForSystem() policy.System {
-	if m.system == nil {
-		return policy.System{}
-	}
-	return m.system.ToCorePolicy()
-}
-
 // Start implements common.Runnable.Start().
 func (m *Instance) Start() error {
 	return nil
@@ -63,6 +53,6 @@ func (m *Instance) Close() error {
 
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
-		return New(ctx, config.(*Config))
+		return New(config.(*Config))
 	}))
 }

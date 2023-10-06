@@ -49,10 +49,6 @@ func (p *Policy) overrideWith(another *Policy) {
 	if another.Timeout != nil {
 		p.Timeout.overrideWith(another.Timeout)
 	}
-	if another.Stats != nil && p.Stats == nil {
-		p.Stats = &Policy_Stats{}
-		p.Stats = another.Stats
-	}
 	if another.Buffer != nil {
 		p.Buffer = &Policy_Buffer{
 			Connection: another.Buffer.Connection,
@@ -74,9 +70,4 @@ func (p *Policy) ToCorePolicy() policy.Session {
 		cp.Buffer.PerConnection = p.Buffer.Connection
 	}
 	return cp
-}
-
-// ToCorePolicy converts this SystemPolicy to policy.System.
-func (p *SystemPolicy) ToCorePolicy() policy.System {
-	return policy.System{}
 }
