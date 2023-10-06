@@ -379,7 +379,6 @@ type Config struct {
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
 	Metrics         *MetricsConfig         `json:"metrics"`
-	Reverse         *ReverseConfig         `json:"reverse"`
 }
 
 func (c *Config) findInboundTag(tag string) int {
@@ -423,10 +422,6 @@ func (c *Config) Override(o *Config, fn string) {
 	if o.Metrics != nil {
 		c.Metrics = o.Metrics
 	}
-	if o.Reverse != nil {
-		c.Reverse = o.Reverse
-	}
-
 	// deprecated attrs... keep them for now
 	if o.InboundConfig != nil {
 		c.InboundConfig = o.InboundConfig
@@ -538,14 +533,6 @@ func (c *Config) Build() (*core.Config, error) {
 			return nil, newError("failed to parse DNS config").Base(err)
 		}
 		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
-	}
-
-	if c.Reverse != nil {
-		r, err := c.Reverse.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(r))
 	}
 
 	var inbounds []InboundDetourConfig

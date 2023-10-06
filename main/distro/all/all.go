@@ -13,7 +13,6 @@ import (
 	_ "github.com/xtls/xray-core/app/log"
 	_ "github.com/xtls/xray-core/app/metrics"
 	_ "github.com/xtls/xray-core/app/policy"
-	_ "github.com/xtls/xray-core/app/reverse"
 	_ "github.com/xtls/xray-core/app/router"
 
 	// Fix dependency cycle caused by core import in internet package
