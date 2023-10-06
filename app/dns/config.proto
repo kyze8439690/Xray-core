@@ -12,17 +12,6 @@ message NameServer {
   xray.common.net.Endpoint address = 1;
   bytes client_ip = 5;
   bool skipFallback = 6;
-
-  message PriorityDomain {
-    string domain = 2;
-  }
-
-  message OriginalRule {
-    string rule = 1;
-    uint32 size = 2;
-  }
-
-  repeated OriginalRule original_rules = 3;
   QueryStrategy query_strategy = 7;
 }
 
