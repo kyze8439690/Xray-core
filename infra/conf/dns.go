@@ -91,11 +91,6 @@ func (c *NameServerConfig) Build() (*dns.NameServer, error) {
 		})
 	}
 
-	geoipList, err := ToCidrList(c.ExpectIPs)
-	if err != nil {
-		return nil, newError("invalid IP rule: ", c.ExpectIPs).Base(err)
-	}
-
 	var myClientIP []byte
 	if c.ClientIP != nil {
 		if !c.ClientIP.Family().IsIP() {
@@ -113,7 +108,6 @@ func (c *NameServerConfig) Build() (*dns.NameServer, error) {
 		ClientIp:          myClientIP,
 		SkipFallback:      c.SkipFallback,
 		PrioritizedDomain: domains,
-		Geoip:             geoipList,
 		OriginalRules:     originalRules,
 		QueryStrategy:     resolveQueryStrategy(c.QueryStrategy),
 	}, nil
@@ -221,22 +215,6 @@ func (m *HostsWrapper) Build() ([]*dns.Config_HostMapping, error) {
 			mapping.Domain = domainName
 			mappings = append(mappings, mapping)
 
-		case strings.HasPrefix(domain, "geosite:"):
-			listName := domain[8:]
-			if len(listName) == 0 {
-				return nil, newError("empty geosite rule: ", domain)
-			}
-			geositeList, err := loadGeositeWithAttr("geosite.dat", listName)
-			if err != nil {
-				return nil, newError("failed to load geosite: ", listName).Base(err)
-			}
-			for _, d := range geositeList {
-				mapping := getHostMapping(m.Hosts[domain])
-				mapping.Type = typeMap[d.Type]
-				mapping.Domain = d.Value
-				mappings = append(mappings, mapping)
-			}
-
 		case strings.HasPrefix(domain, "regexp:"):
 			regexpVal := domain[7:]
 			if len(regexpVal) == 0 {
@@ -279,25 +257,7 @@ func (m *HostsWrapper) Build() ([]*dns.Config_HostMapping, error) {
 				return nil, newError("substr in dotless rule should not contain a dot: ", substr)
 			}
 			mappings = append(mappings, mapping)
-
-		case strings.HasPrefix(domain, "ext:"):
-			kv := strings.Split(domain[4:], ":")
-			if len(kv) != 2 {
-				return nil, newError("invalid external resource: ", domain)
-			}
-			filename := kv[0]
-			list := kv[1]
-			geositeList, err := loadGeositeWithAttr(filename, list)
-			if err != nil {
-				return nil, newError("failed to load domain list: ", list, " from ", filename).Base(err)
-			}
-			for _, d := range geositeList {
-				mapping := getHostMapping(m.Hosts[domain])
-				mapping.Type = typeMap[d.Type]
-				mapping.Domain = d.Value
-				mappings = append(mappings, mapping)
-			}
-
+	
 		default:
 			mapping := getHostMapping(m.Hosts[domain])
 			mapping.Type = dns.DomainMatchingType_Full

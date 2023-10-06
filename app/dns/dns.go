@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/xtls/xray-core/app/router"
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
@@ -93,7 +92,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	// MatcherInfos is ensured to cover the maximum index domainMatcher could return, where matcher's index starts from 1
 	matcherInfos := make([]*DomainMatcherInfo, domainRuleCount+1)
 	domainMatcher := &strmatcher.MatcherGroup{}
-	geoipContainer := router.GeoIPMatcherContainer{}
 
 	for _, endpoint := range config.NameServers {
 		features.PrintDeprecatedFeatureWarning("simple DNS server")
@@ -120,7 +118,7 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		case net.IPv4len, net.IPv6len:
 			myClientIP = net.IP(ns.ClientIp)
 		}
-		client, err := NewClient(ctx, ns, myClientIP, geoipContainer, &matcherInfos, updateDomain)
+		client, err := NewClient(ctx, ns, myClientIP, &matcherInfos, updateDomain)
 		if err != nil {
 			return nil, newError("failed to create client").Base(err)
 		}

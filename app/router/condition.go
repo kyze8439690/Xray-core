@@ -110,47 +110,6 @@ func (m *DomainMatcher) Apply(ctx routing.Context) bool {
 	return m.ApplyDomain(domain)
 }
 
-type MultiGeoIPMatcher struct {
-	matchers []*GeoIPMatcher
-	onSource bool
-}
-
-func NewMultiGeoIPMatcher(geoips []*GeoIP, onSource bool) (*MultiGeoIPMatcher, error) {
-	var matchers []*GeoIPMatcher
-	for _, geoip := range geoips {
-		matcher, err := globalGeoIPContainer.Add(geoip)
-		if err != nil {
-			return nil, err
-		}
-		matchers = append(matchers, matcher)
-	}
-
-	matcher := &MultiGeoIPMatcher{
-		matchers: matchers,
-		onSource: onSource,
-	}
-
-	return matcher, nil
-}
-
-// Apply implements Condition.
-func (m *MultiGeoIPMatcher) Apply(ctx routing.Context) bool {
-	var ips []net.IP
-	if m.onSource {
-		ips = ctx.GetSourceIPs()
-	} else {
-		ips = ctx.GetTargetIPs()
-	}
-	for _, ip := range ips {
-		for _, matcher := range m.matchers {
-			if matcher.Match(ip) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 type PortMatcher struct {
 	port     net.MemoryPortList
 	onSource bool
