@@ -8,7 +8,6 @@ import (
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/common/uuid"
 	"github.com/xtls/xray-core/proxy/vmess"
-	"github.com/xtls/xray-core/proxy/vmess/inbound"
 	"github.com/xtls/xray-core/proxy/vmess/outbound"
 	"google.golang.org/protobuf/proto"
 )
@@ -43,77 +42,6 @@ func (a *VMessAccount) Build() *vmess.Account {
 		},
 		TestsEnabled: a.Experiments,
 	}
-}
-
-type VMessDetourConfig struct {
-	ToTag string `json:"to"`
-}
-
-// Build implements Buildable
-func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
-	return &inbound.DetourConfig{
-		To: c.ToTag,
-	}
-}
-
-type FeaturesConfig struct {
-	Detour *VMessDetourConfig `json:"detour"`
-}
-
-type VMessDefaultConfig struct {
-	Level byte `json:"level"`
-}
-
-// Build implements Buildable
-func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
-	config := new(inbound.DefaultConfig)
-	config.Level = uint32(c.Level)
-	return config
-}
-
-type VMessInboundConfig struct {
-	Users        []json.RawMessage   `json:"clients"`
-	Features     *FeaturesConfig     `json:"features"`
-	Defaults     *VMessDefaultConfig `json:"default"`
-	DetourConfig *VMessDetourConfig  `json:"detour"`
-}
-
-// Build implements Buildable
-func (c *VMessInboundConfig) Build() (proto.Message, error) {
-	config := &inbound.Config{}
-
-	if c.Defaults != nil {
-		config.Default = c.Defaults.Build()
-	}
-
-	if c.DetourConfig != nil {
-		config.Detour = c.DetourConfig.Build()
-	} else if c.Features != nil && c.Features.Detour != nil {
-		config.Detour = c.Features.Detour.Build()
-	}
-
-	config.User = make([]*protocol.User, len(c.Users))
-	for idx, rawData := range c.Users {
-		user := new(protocol.User)
-		if err := json.Unmarshal(rawData, user); err != nil {
-			return nil, newError("invalid VMess user").Base(err)
-		}
-		account := new(VMessAccount)
-		if err := json.Unmarshal(rawData, account); err != nil {
-			return nil, newError("invalid VMess user").Base(err)
-		}
-
-		u, err := uuid.ParseString(account.ID)
-		if err != nil {
-			return nil, err
-		}
-		account.ID = u.String()
-
-		user.Account = serial.ToTypedMessage(account.Build())
-		config.User[idx] = user
-	}
-
-	return config, nil
 }
 
 type VMessOutboundTarget struct {
