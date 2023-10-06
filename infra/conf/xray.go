@@ -19,7 +19,6 @@ var (
 	inboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
 		"http":          func() interface{} { return new(HTTPServerConfig) },
 		"socks":         func() interface{} { return new(SocksServerConfig) },
-		"vmess":         func() interface{} { return new(VMessInboundConfig) },
 		"trojan":        func() interface{} { return new(TrojanServerConfig) },
 	}, "protocol", "settings")
 
