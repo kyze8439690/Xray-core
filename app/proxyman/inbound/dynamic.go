@@ -135,7 +135,6 @@ func (h *DynamicInboundHandler) refresh() error {
 				stream:          h.streamSettings,
 				recvOrigDest:    h.receiverConfig.ReceiveOriginalDestination,
 				dispatcher:      h.mux,
-				sniffingConfig:  h.receiverConfig.GetEffectiveSniffingSettings(),
 				ctx:             h.ctx,
 			}
 			if err := worker.Start(); err != nil {
@@ -152,7 +151,6 @@ func (h *DynamicInboundHandler) refresh() error {
 				address:         address,
 				port:            port,
 				dispatcher:      h.mux,
-				sniffingConfig:  h.receiverConfig.GetEffectiveSniffingSettings(),
 				stream:          h.streamSettings,
 				ctx:             h.ctx,
 			}

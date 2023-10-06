@@ -76,25 +76,14 @@ type Outbound struct {
 	Conn net.Conn
 }
 
-// SniffingRequest controls the behavior of content sniffing.
-type SniffingRequest struct {
-	ExcludeForDomain               []string
-	OverrideDestinationForProtocol []string
-	Enabled                        bool
-	MetadataOnly                   bool
-	RouteOnly                      bool
-}
-
 // Content is the metadata of the connection content.
 type Content struct {
 	// Protocol of current content.
 	Protocol string
 
-	SniffingRequest SniffingRequest
-
 	Attributes map[string]string
 
-	SkipDNSResolve bool
+	SkipDNSResolve bool	
 }
 
 // Sockopt is the settings for socket connection.

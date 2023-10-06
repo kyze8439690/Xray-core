@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
 	"github.com/xtls/xray-core/common/net"
@@ -38,7 +37,6 @@ type tcpWorker struct {
 	recvOrigDest    bool
 	tag             string
 	dispatcher      routing.Dispatcher
-	sniffingConfig  *proxyman.SniffingConfig
 
 	hub internet.Listener
 
@@ -85,13 +83,6 @@ func (w *tcpWorker) callback(conn stat.Connection) {
 	})
 
 	content := new(session.Content)
-	if w.sniffingConfig != nil {
-		content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-		content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-		content.SniffingRequest.ExcludeForDomain = w.sniffingConfig.DomainsExcluded
-		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-		content.SniffingRequest.RouteOnly = w.sniffingConfig.RouteOnly
-	}
 	ctx = session.ContextWithContent(ctx, content)
 
 	if err := w.proxy.Process(ctx, net.Network_TCP, conn, w.dispatcher); err != nil {
@@ -222,7 +213,6 @@ type udpWorker struct {
 	tag             string
 	stream          *internet.MemoryStreamConfig
 	dispatcher      routing.Dispatcher
-	sniffingConfig  *proxyman.SniffingConfig
 
 	checker    *task.Periodic
 	activeConn map[connID]*udpConn
@@ -296,12 +286,6 @@ func (w *udpWorker) callback(b *buf.Buffer, source net.Destination, originalDest
 				Tag:     w.tag,
 			})
 			content := new(session.Content)
-			if w.sniffingConfig != nil {
-				content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-				content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-				content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-				content.SniffingRequest.RouteOnly = w.sniffingConfig.RouteOnly
-			}
 			ctx = session.ContextWithContent(ctx, content)
 			if err := w.proxy.Process(ctx, net.Network_UDP, conn, w.dispatcher); err != nil {
 				newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -409,84 +393,4 @@ func (w *udpWorker) Port() net.Port {
 
 func (w *udpWorker) Proxy() proxy.Inbound {
 	return w.proxy
-}
-
-type dsWorker struct {
-	address         net.Address
-	proxy           proxy.Inbound
-	stream          *internet.MemoryStreamConfig
-	tag             string
-	dispatcher      routing.Dispatcher
-	sniffingConfig  *proxyman.SniffingConfig
-
-	hub internet.Listener
-
-	ctx context.Context
-}
-
-func (w *dsWorker) callback(conn stat.Connection) {
-	ctx, cancel := context.WithCancel(w.ctx)
-	sid := session.NewID()
-	ctx = session.ContextWithID(ctx, sid)
-	ctx = session.ContextWithInbound(ctx, &session.Inbound{
-		Source:  net.DestinationFromAddr(conn.RemoteAddr()),
-		Gateway: net.UnixDestination(w.address),
-		Tag:     w.tag,
-		Conn:    conn,
-	})
-
-	content := new(session.Content)
-	if w.sniffingConfig != nil {
-		content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-		content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-		content.SniffingRequest.ExcludeForDomain = w.sniffingConfig.DomainsExcluded
-		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-		content.SniffingRequest.RouteOnly = w.sniffingConfig.RouteOnly
-	}
-	ctx = session.ContextWithContent(ctx, content)
-
-	if err := w.proxy.Process(ctx, net.Network_UNIX, conn, w.dispatcher); err != nil {
-		newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
-	}
-	cancel()
-	if err := conn.Close(); err != nil {
-		newError("failed to close connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
-	}
-}
-
-func (w *dsWorker) Proxy() proxy.Inbound {
-	return w.proxy
-}
-
-func (w *dsWorker) Port() net.Port {
-	return net.Port(0)
-}
-
-func (w *dsWorker) Start() error {
-	ctx := context.Background()
-	hub, err := internet.ListenUnix(ctx, w.address, w.stream, func(conn stat.Connection) {
-		go w.callback(conn)
-	})
-	if err != nil {
-		return newError("failed to listen Unix Domain Socket on ", w.address).AtWarning().Base(err)
-	}
-	w.hub = hub
-	return nil
-}
-
-func (w *dsWorker) Close() error {
-	var errors []interface{}
-	if w.hub != nil {
-		if err := common.Close(w.hub); err != nil {
-			errors = append(errors, err)
-		}
-		if err := common.Close(w.proxy); err != nil {
-			errors = append(errors, err)
-		}
-	}
-	if len(errors) > 0 {
-		return newError("failed to close all resources").Base(newError(serial.Concat(errors...)))
-	}
-
-	return nil
 }
