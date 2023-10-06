@@ -15,7 +15,6 @@ import (
 	"github.com/xtls/xray-core/common/signal/done"
 	"github.com/xtls/xray-core/common/task"
 	"github.com/xtls/xray-core/features/routing"
-	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/proxy"
 	"github.com/xtls/xray-core/transport/internet"
 	"github.com/xtls/xray-core/transport/internet/stat"
@@ -40,8 +39,6 @@ type tcpWorker struct {
 	tag             string
 	dispatcher      routing.Dispatcher
 	sniffingConfig  *proxyman.SniffingConfig
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
 
 	hub internet.Listener
 
@@ -80,13 +77,6 @@ func (w *tcpWorker) callback(conn stat.Connection) {
 	}
 	ctx = session.ContextWithOutbound(ctx, outbound)
 
-	if w.uplinkCounter != nil || w.downlinkCounter != nil {
-		conn = &stat.CounterConnection{
-			Connection:   conn,
-			ReadCounter:  w.uplinkCounter,
-			WriteCounter: w.downlinkCounter,
-		}
-	}
 	ctx = session.ContextWithInbound(ctx, &session.Inbound{
 		Source:  net.DestinationFromAddr(conn.RemoteAddr()),
 		Gateway: net.TCPDestination(w.address, w.port),
@@ -156,8 +146,6 @@ type udpConn struct {
 	remote           net.Addr
 	local            net.Addr
 	done             *done.Instance
-	uplink           stats.Counter
-	downlink         stats.Counter
 	inactive         bool
 }
 
@@ -177,10 +165,6 @@ func (c *udpConn) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	}
 	c.updateActivity()
 
-	if c.uplink != nil {
-		c.uplink.Add(int64(mb.Len()))
-	}
-
 	return mb, nil
 }
 
@@ -191,9 +175,6 @@ func (c *udpConn) Read(buf []byte) (int, error) {
 // Write implements io.Writer.
 func (c *udpConn) Write(buf []byte) (int, error) {
 	n, err := c.output(buf)
-	if c.downlink != nil {
-		c.downlink.Add(int64(n))
-	}
 	if err == nil {
 		c.updateActivity()
 	}
@@ -242,8 +223,6 @@ type udpWorker struct {
 	stream          *internet.MemoryStreamConfig
 	dispatcher      routing.Dispatcher
 	sniffingConfig  *proxyman.SniffingConfig
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
 
 	checker    *task.Periodic
 	activeConn map[connID]*udpConn
@@ -276,8 +255,6 @@ func (w *udpWorker) getConnection(id connID) (*udpConn, bool) {
 			Port: int(w.port),
 		},
 		done:     done.New(),
-		uplink:   w.uplinkCounter,
-		downlink: w.downlinkCounter,
 	}
 	w.activeConn[id] = conn
 
@@ -441,8 +418,6 @@ type dsWorker struct {
 	tag             string
 	dispatcher      routing.Dispatcher
 	sniffingConfig  *proxyman.SniffingConfig
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
 
 	hub internet.Listener
 
@@ -453,14 +428,6 @@ func (w *dsWorker) callback(conn stat.Connection) {
 	ctx, cancel := context.WithCancel(w.ctx)
 	sid := session.NewID()
 	ctx = session.ContextWithID(ctx, sid)
-
-	if w.uplinkCounter != nil || w.downlinkCounter != nil {
-		conn = &stat.CounterConnection{
-			Connection:   conn,
-			ReadCounter:  w.uplinkCounter,
-			WriteCounter: w.downlinkCounter,
-		}
-	}
 	ctx = session.ContextWithInbound(ctx, &session.Inbound{
 		Source:  net.DestinationFromAddr(conn.RemoteAddr()),
 		Gateway: net.UnixDestination(w.address),

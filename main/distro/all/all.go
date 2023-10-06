@@ -12,7 +12,6 @@ import (
 	_ "github.com/xtls/xray-core/app/commander"
 	_ "github.com/xtls/xray-core/app/log/command"
 	_ "github.com/xtls/xray-core/app/proxyman/command"
-	_ "github.com/xtls/xray-core/app/stats/command"
 
 	// Developer preview services
 	_ "github.com/xtls/xray-core/app/observatory/command"
@@ -25,7 +24,6 @@ import (
 	_ "github.com/xtls/xray-core/app/policy"
 	_ "github.com/xtls/xray-core/app/reverse"
 	_ "github.com/xtls/xray-core/app/router"
-	_ "github.com/xtls/xray-core/app/stats"
 
 	// Fix dependency cycle caused by core import in internet package
 	_ "github.com/xtls/xray-core/transport/internet/tagged/taggedimpl"

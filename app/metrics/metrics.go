@@ -5,22 +5,19 @@ import (
 	"expvar"
 	"net/http"
 	_ "net/http/pprof"
-	"strings"
 
 	"github.com/xtls/xray-core/app/observatory"
-	"github.com/xtls/xray-core/app/stats"
+
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/signal/done"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/extension"
 	"github.com/xtls/xray-core/features/outbound"
-	feature_stats "github.com/xtls/xray-core/features/stats"
 )
 
 type MetricsHandler struct {
 	ohm          outbound.Manager
-	statsManager feature_stats.Manager
 	observatory  extension.Observatory
 	tag          string
 }
@@ -30,33 +27,8 @@ func NewMetricsHandler(ctx context.Context, config *Config) (*MetricsHandler, er
 	c := &MetricsHandler{
 		tag: config.Tag,
 	}
-	common.Must(core.RequireFeatures(ctx, func(om outbound.Manager, sm feature_stats.Manager) {
-		c.statsManager = sm
+	common.Must(core.RequireFeatures(ctx, func(om outbound.Manager) {
 		c.ohm = om
-	}))
-	expvar.Publish("stats", expvar.Func(func() interface{} {
-		manager, ok := c.statsManager.(*stats.Manager)
-		if !ok {
-			return nil
-		}
-		resp := map[string]map[string]map[string]int64{
-			"inbound":  {},
-			"outbound": {},
-			"user":     {},
-		}
-		manager.VisitCounters(func(name string, counter feature_stats.Counter) bool {
-			nameSplit := strings.Split(name, ">>>")
-			typeName, tagOrUser, direction := nameSplit[0], nameSplit[1], nameSplit[3]
-			if item, found := resp[typeName][tagOrUser]; found {
-				item[direction] = counter.Value()
-			} else {
-				resp[typeName][tagOrUser] = map[string]int64{
-					direction: counter.Value(),
-				}
-			}
-			return true
-		})
-		return resp
 	}))
 	expvar.Publish("observatory", expvar.Func(func() interface{} {
 		if c.observatory == nil {

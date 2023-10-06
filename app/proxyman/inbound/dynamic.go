@@ -117,8 +117,6 @@ func (h *DynamicInboundHandler) refresh() error {
 		address = net.AnyIP
 	}
 
-	uplinkCounter, downlinkCounter := getStatCounter(h.v, h.tag)
-
 	for i := uint32(0); i < concurrency; i++ {
 		port := h.allocatePort()
 		rawProxy, err := core.CreateObject(h.v, h.proxyConfig)
@@ -138,8 +136,6 @@ func (h *DynamicInboundHandler) refresh() error {
 				recvOrigDest:    h.receiverConfig.ReceiveOriginalDestination,
 				dispatcher:      h.mux,
 				sniffingConfig:  h.receiverConfig.GetEffectiveSniffingSettings(),
-				uplinkCounter:   uplinkCounter,
-				downlinkCounter: downlinkCounter,
 				ctx:             h.ctx,
 			}
 			if err := worker.Start(); err != nil {
@@ -157,8 +153,6 @@ func (h *DynamicInboundHandler) refresh() error {
 				port:            port,
 				dispatcher:      h.mux,
 				sniffingConfig:  h.receiverConfig.GetEffectiveSniffingSettings(),
-				uplinkCounter:   uplinkCounter,
-				downlinkCounter: downlinkCounter,
 				stream:          h.streamSettings,
 				ctx:             h.ctx,
 			}
