@@ -16,7 +16,6 @@ import (
 	"github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/transport/internet"
-	"github.com/xtls/xray-core/transport/internet/domainsocket"
 	httpheader "github.com/xtls/xray-core/transport/internet/headers/http"
 	"github.com/xtls/xray-core/transport/internet/http"
 	"github.com/xtls/xray-core/transport/internet/kcp"
@@ -271,15 +270,6 @@ type DomainSocketConfig struct {
 	Path     string `json:"path"`
 	Abstract bool   `json:"abstract"`
 	Padding  bool   `json:"padding"`
-}
-
-// Build implements Buildable.
-func (c *DomainSocketConfig) Build() (proto.Message, error) {
-	return &domainsocket.Config{
-		Path:     c.Path,
-		Abstract: c.Abstract,
-		Padding:  c.Padding,
-	}, nil
 }
 
 func readFileOrString(f string, s []string) ([]byte, error) {
@@ -706,19 +696,18 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 }
 
 type StreamConfig struct {
-	Network         *TransportProtocol  `json:"network"`
-	Security        string              `json:"security"`
-	TLSSettings     *TLSConfig          `json:"tlsSettings"`
-	REALITYSettings *REALITYConfig      `json:"realitySettings"`
-	TCPSettings     *TCPConfig          `json:"tcpSettings"`
-	KCPSettings     *KCPConfig          `json:"kcpSettings"`
-	WSSettings      *WebSocketConfig    `json:"wsSettings"`
-	HTTPSettings    *HTTPConfig         `json:"httpSettings"`
-	DSSettings      *DomainSocketConfig `json:"dsSettings"`
-	QUICSettings    *QUICConfig         `json:"quicSettings"`
-	SocketSettings  *SocketConfig       `json:"sockopt"`
-	GRPCConfig      *GRPCConfig         `json:"grpcSettings"`
-	GUNConfig       *GRPCConfig         `json:"gunSettings"`
+	Network        *TransportProtocol  `json:"network"`
+	Security       string              `json:"security"`
+	TLSSettings    *TLSConfig          `json:"tlsSettings"`
+	XTLSSettings   *XTLSConfig         `json:"xtlsSettings"`
+	TCPSettings    *TCPConfig          `json:"tcpSettings"`
+	KCPSettings    *KCPConfig          `json:"kcpSettings"`
+	WSSettings     *WebSocketConfig    `json:"wsSettings"`
+	HTTPSettings   *HTTPConfig         `json:"httpSettings"`
+	QUICSettings   *QUICConfig         `json:"quicSettings"`
+	SocketSettings *SocketConfig       `json:"sockopt"`
+	GRPCConfig     *GRPCConfig         `json:"grpcSettings"`
+	GUNConfig      *GRPCConfig         `json:"gunSettings"`
 }
 
 // Build implements Buildable.
@@ -804,16 +793,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
 			ProtocolName: "http",
 			Settings:     serial.ToTypedMessage(ts),
-		})
-	}
-	if c.DSSettings != nil {
-		ds, err := c.DSSettings.Build()
-		if err != nil {
-			return nil, newError("Failed to build DomainSocket config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "domainsocket",
-			Settings:     serial.ToTypedMessage(ds),
 		})
 	}
 	if c.QUICSettings != nil {

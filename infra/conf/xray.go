@@ -528,9 +528,6 @@ func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
 	if s.HTTPSettings == nil {
 		s.HTTPSettings = t.HTTPConfig
 	}
-	if s.DSSettings == nil {
-		s.DSSettings = t.DSConfig
-	}
 }
 
 // Build implements Buildable.
