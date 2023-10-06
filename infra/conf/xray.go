@@ -268,7 +268,6 @@ type Config struct {
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
-	Metrics         *MetricsConfig         `json:"metrics"`
 }
 
 func (c *Config) findInboundTag(tag string) int {
@@ -308,9 +307,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
-	}
-	if o.Metrics != nil {
-		c.Metrics = o.Metrics
 	}
 	// deprecated attrs... keep them for now
 	if o.InboundConfig != nil {
@@ -389,14 +385,6 @@ func (c *Config) Build() (*core.Config, error) {
 			serial.ToTypedMessage(&proxyman.InboundConfig{}),
 			serial.ToTypedMessage(&proxyman.OutboundConfig{}),
 		},
-	}
-
-	if c.Metrics != nil {
-		metricsConf, err := c.Metrics.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(metricsConf))
 	}
 
 	var logConfMsg *serial.TypedMessage
