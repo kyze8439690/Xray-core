@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/common"
@@ -233,10 +232,6 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (stat.Connecti
 			}
 			outbound.Gateway = h.senderSettings.Via.AsAddress()
 		}
-	}
-
-	if conn, err := h.getUoTConnection(ctx, dest); err != os.ErrInvalid {
-		return conn, err
 	}
 
 	conn, err := internet.Dial(ctx, dest, h.streamSettings)
