@@ -5,20 +5,15 @@ import (
 	"strings"
 
 	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/features/routing"
 )
 
 type Rule struct {
 	Tag       string
-	Balancer  *Balancer
 	Condition Condition
 }
 
 func (r *Rule) GetTag() (string, error) {
-	if r.Balancer != nil {
-		return r.Balancer.PickOutbound()
-	}
 	return r.Tag, nil
 }
 
@@ -91,18 +86,4 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 	}
 
 	return conds, nil
-}
-
-func (br *BalancingRule) Build(ohm outbound.Manager) (*Balancer, error) {
-	switch br.Strategy {
-	case "random":
-		fallthrough
-	default:
-		return &Balancer{
-			selectors: br.OutboundSelector,
-			strategy:  &RandomStrategy{},
-			ohm:       ohm,
-		}, nil
-
-	}
 }
