@@ -11,7 +11,7 @@ import (
 )
 
 func TestPolicy(t *testing.T) {
-	manager, err := New(context.Background(), &Config{
+	manager, err := New(&Config{
 		Level: map[uint32]*Policy{
 			0: {
 				Timeout: &Policy_Timeout{
