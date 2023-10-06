@@ -11,8 +11,6 @@ type TransportConfig struct {
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
 	QUICConfig *QUICConfig         `json:"quicSettings"`
-	GRPCConfig *GRPCConfig         `json:"grpcSettings"`
-	GUNConfig  *GRPCConfig         `json:"gunSettings"`
 }
 
 // Build implements Buildable.
@@ -60,20 +58,6 @@ func (c *TransportConfig) Build() (*global.Config, error) {
 		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
 			ProtocolName: "quic",
 			Settings:     serial.ToTypedMessage(qs),
-		})
-	}
-
-	if c.GRPCConfig == nil {
-		c.GRPCConfig = c.GUNConfig
-	}
-	if c.GRPCConfig != nil {
-		gs, err := c.GRPCConfig.Build()
-		if err != nil {
-			return nil, newError("Failed to build gRPC config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "grpc",
-			Settings:     serial.ToTypedMessage(gs),
 		})
 	}
 
