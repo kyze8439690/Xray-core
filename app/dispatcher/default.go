@@ -88,16 +88,12 @@ type DefaultDispatcher struct {
 	router routing.Router
 	policy policy.Manager
 	dns    dns.Client
-	fdns   dns.FakeDNSEngine
 }
 
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		d := new(DefaultDispatcher)
 		if err := core.RequireFeatures(ctx, func(om outbound.Manager, router routing.Router, pm policy.Manager, dc dns.Client) error {
-			core.RequireFeatures(ctx, func(fdns dns.FakeDNSEngine) {
-				d.fdns = fdns
-			})
 			return d.Init(config.(*Config), om, router, pm, dc)
 		}); err != nil {
 			return nil, err
@@ -163,19 +159,9 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 		content = new(session.Content)
 		ctx = session.ContextWithContent(ctx, content)
 	}
-	sniffingRequest := content.SniffingRequest
-	inbound, outbound := d.getLink(ctx)
-	if !sniffingRequest.Enabled {
-		go d.routedDispatch(ctx, outbound, destination)
-	} else {
-		go func() {
-			cReader := &cachedReader{
-				reader: outbound.Reader.(*pipe.Reader),
-			}
-			outbound.Reader = cReader
-			d.routedDispatch(ctx, outbound, destination)
-		}()
-	}
+
+	inbound, outbound := d.getLink(ctx, destination.Network)
+	go d.routedDispatch(ctx, outbound, destination)
 	return inbound, nil
 }
 
@@ -196,18 +182,7 @@ func (d *DefaultDispatcher) DispatchLink(ctx context.Context, destination net.De
 		content = new(session.Content)
 		ctx = session.ContextWithContent(ctx, content)
 	}
-	sniffingRequest := content.SniffingRequest
-	if !sniffingRequest.Enabled {
-		d.routedDispatch(ctx, outbound, destination)
-	} else {
-		go func() {
-			cReader := &cachedReader{
-				reader: outbound.Reader.(*pipe.Reader),
-			}
-			outbound.Reader = cReader
-			d.routedDispatch(ctx, outbound, destination)
-		}()
-	}
+	go d.routedDispatch(ctx, outbound, destination)
 
 	return nil
 }
