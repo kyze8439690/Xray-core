@@ -17,7 +17,6 @@ import (
 
 var (
 	inboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"http":          func() interface{} { return new(HTTPServerConfig) },
 		"socks":         func() interface{} { return new(SocksServerConfig) },
 		"trojan":        func() interface{} { return new(TrojanServerConfig) },
 	}, "protocol", "settings")
