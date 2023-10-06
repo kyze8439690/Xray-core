@@ -25,7 +25,6 @@ import (
 
 var (
 	tcpHeaderLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"none": func() interface{} { return new(NoOpConnectionAuthenticator) },
 		"http": func() interface{} { return new(Authenticator) },
 	}, "type", "")
 )

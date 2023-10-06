@@ -5,20 +5,7 @@ import (
 
 	"github.com/xtls/xray-core/transport/internet/headers/dns"
 	"github.com/xtls/xray-core/transport/internet/headers/http"
-	"github.com/xtls/xray-core/transport/internet/headers/noop"
 )
-
-type NoOpAuthenticator struct{}
-
-func (NoOpAuthenticator) Build() (proto.Message, error) {
-	return new(noop.Config), nil
-}
-
-type NoOpConnectionAuthenticator struct{}
-
-func (NoOpConnectionAuthenticator) Build() (proto.Message, error) {
-	return new(noop.ConnectionConfig), nil
-}
 
 type AuthenticatorRequest struct {
 	Version string                 `json:"version"`
