@@ -44,76 +44,6 @@ func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
 	return kp, nil
 }
 
-type SniffingConfig struct {
-	Enabled         bool        `json:"enabled"`
-	DestOverride    *StringList `json:"destOverride"`
-	DomainsExcluded *StringList `json:"domainsExcluded"`
-	MetadataOnly    bool        `json:"metadataOnly"`
-	RouteOnly       bool        `json:"routeOnly"`
-}
-
-// Build implements Buildable.
-func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
-	var p []string
-	if c.DestOverride != nil {
-		for _, protocol := range *c.DestOverride {
-			switch strings.ToLower(protocol) {
-			case "http":
-				p = append(p, "http")
-			case "tls", "https", "ssl":
-				p = append(p, "tls")
-			case "quic":
-				p = append(p, "quic")
-			case "fakedns":
-				p = append(p, "fakedns")
-			case "fakedns+others":
-				p = append(p, "fakedns+others")
-			default:
-				return nil, newError("unknown protocol: ", protocol)
-			}
-		}
-	}
-
-	var d []string
-	if c.DomainsExcluded != nil {
-		for _, domain := range *c.DomainsExcluded {
-			d = append(d, strings.ToLower(domain))
-		}
-	}
-
-	return &proxyman.SniffingConfig{
-		Enabled:             c.Enabled,
-		DestinationOverride: p,
-		DomainsExcluded:     d,
-		MetadataOnly:        c.MetadataOnly,
-		RouteOnly:           c.RouteOnly,
-	}, nil
-}
-
-type MuxConfig struct {
-	Enabled         bool   `json:"enabled"`
-	Concurrency     int16  `json:"concurrency"`
-	XudpConcurrency int16  `json:"xudpConcurrency"`
-	XudpProxyUDP443 string `json:"xudpProxyUDP443"`
-}
-
-// Build creates MultiplexingConfig, Concurrency < 0 completely disables mux.
-func (m *MuxConfig) Build() (*proxyman.MultiplexingConfig, error) {
-	switch m.XudpProxyUDP443 {
-	case "":
-		m.XudpProxyUDP443 = "reject"
-	case "reject", "allow", "skip":
-	default:
-		return nil, newError(`unknown "xudpProxyUDP443": `, m.XudpProxyUDP443)
-	}
-	return &proxyman.MultiplexingConfig{
-		Enabled:         m.Enabled,
-		Concurrency:     int32(m.Concurrency),
-		XudpConcurrency: int32(m.XudpConcurrency),
-		XudpProxyUDP443: m.XudpProxyUDP443,
-	}, nil
-}
-
 type InboundDetourAllocationConfig struct {
 	Strategy    string  `json:"strategy"`
 	Concurrency *uint32 `json:"concurrency"`
@@ -157,7 +87,6 @@ type InboundDetourConfig struct {
 	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
 	StreamSetting  *StreamConfig                  `json:"streamSettings"`
 	DomainOverride *StringList                    `json:"domainOverride"`
-	SniffingConfig *SniffingConfig                `json:"sniffing"`
 }
 
 // Build implements Buildable.
@@ -223,13 +152,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 		receiverSettings.StreamSettings = ss
 	}
-	if c.SniffingConfig != nil {
-		s, err := c.SniffingConfig.Build()
-		if err != nil {
-			return nil, newError("failed to build sniffing config").Base(err)
-		}
-		receiverSettings.SniffingSettings = s
-	}
 	if c.DomainOverride != nil {
 		kp, err := toProtocolList(*c.DomainOverride)
 		if err != nil {
@@ -265,7 +187,6 @@ type OutboundDetourConfig struct {
 	Settings      *json.RawMessage `json:"settings"`
 	StreamSetting *StreamConfig    `json:"streamSettings"`
 	ProxySettings *ProxyConfig     `json:"proxySettings"`
-	MuxSettings   *MuxConfig       `json:"mux"`
 }
 
 func (c *OutboundDetourConfig) checkChainProxyConfig() error {
@@ -319,14 +240,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 			ps = nil
 		}
 		senderSettings.ProxySettings = ps
-	}
-
-	if c.MuxSettings != nil {
-		ms, err := c.MuxSettings.Build()
-		if err != nil {
-			return nil, newError("failed to build Mux config.").Base(err)
-		}
-		senderSettings.MultiplexSettings = ms
 	}
 
 	settings := []byte("{}")
