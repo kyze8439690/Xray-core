@@ -378,7 +378,6 @@ type Config struct {
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
 	Policy          *PolicyConfig          `json:"policy"`
-	API             *APIConfig             `json:"api"`
 	Metrics         *MetricsConfig         `json:"metrics"`
 	Reverse         *ReverseConfig         `json:"reverse"`
 	Observatory     *ObservatoryConfig     `json:"observatory"`
@@ -424,9 +423,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Policy != nil {
 		c.Policy = o.Policy
-	}
-	if o.API != nil {
-		c.API = o.API
 	}
 	if o.Metrics != nil {
 		c.Metrics = o.Metrics
@@ -518,13 +514,6 @@ func (c *Config) Build() (*core.Config, error) {
 		},
 	}
 
-	if c.API != nil {
-		apiConf, err := c.API.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(apiConf))
-	}
 	if c.Metrics != nil {
 		metricsConf, err := c.Metrics.Build()
 		if err != nil {
