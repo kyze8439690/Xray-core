@@ -381,7 +381,6 @@ type Config struct {
 	API             *APIConfig             `json:"api"`
 	Metrics         *MetricsConfig         `json:"metrics"`
 	Reverse         *ReverseConfig         `json:"reverse"`
-	FakeDNS         *FakeDNSConfig         `json:"fakeDns"`
 	Observatory     *ObservatoryConfig     `json:"observatory"`
 }
 
@@ -434,10 +433,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Reverse != nil {
 		c.Reverse = o.Reverse
-	}
-
-	if o.FakeDNS != nil {
-		c.FakeDNS = o.FakeDNS
 	}
 
 	if o.Observatory != nil {
@@ -578,14 +573,6 @@ func (c *Config) Build() (*core.Config, error) {
 			return nil, err
 		}
 		config.App = append(config.App, serial.ToTypedMessage(r))
-	}
-
-	if c.FakeDNS != nil {
-		r, err := c.FakeDNS.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append([]*serial.TypedMessage{serial.ToTypedMessage(r)}, config.App...)
 	}
 
 	if c.Observatory != nil {
