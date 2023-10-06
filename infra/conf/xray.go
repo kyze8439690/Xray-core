@@ -10,7 +10,7 @@ import (
 	"github.com/xtls/xray-core/app/dispatcher"
 	"github.com/xtls/xray-core/app/proxyman"
 	"github.com/xtls/xray-core/common/serial"
-	core "github.com/xtls/xray-core/core"
+	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/transport/internet"
 )
 
@@ -28,21 +28,6 @@ var (
 
 	ctllog = log.New(os.Stderr, "xctl> ", 0)
 )
-
-func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
-	kp := make([]proxyman.KnownProtocols, 0, 8)
-	for _, p := range s {
-		switch strings.ToLower(p) {
-		case "http":
-			kp = append(kp, proxyman.KnownProtocols_HTTP)
-		case "https", "tls", "ssl":
-			kp = append(kp, proxyman.KnownProtocols_TLS)
-		default:
-			return nil, newError("Unknown protocol: ", p)
-		}
-	}
-	return kp, nil
-}
 
 type InboundDetourAllocationConfig struct {
 	Strategy    string  `json:"strategy"`
@@ -86,7 +71,6 @@ type InboundDetourConfig struct {
 	Tag            string                         `json:"tag"`
 	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
 	StreamSetting  *StreamConfig                  `json:"streamSettings"`
-	DomainOverride *StringList                    `json:"domainOverride"`
 }
 
 // Build implements Buildable.
@@ -152,17 +136,10 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 		receiverSettings.StreamSettings = ss
 	}
-	if c.DomainOverride != nil {
-		kp, err := toProtocolList(*c.DomainOverride)
-		if err != nil {
-			return nil, newError("failed to parse inbound detour config").Base(err)
-		}
-		receiverSettings.DomainOverride = kp
-	}
 
 	settings := []byte("{}")
 	if c.Settings != nil {
-		settings = ([]byte)(*c.Settings)
+		settings = *c.Settings
 	}
 	rawConfig, err := inboundConfigLoader.LoadWithID(settings, c.Protocol)
 	if err != nil {
@@ -244,7 +221,7 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 
 	settings := []byte("{}")
 	if c.Settings != nil {
-		settings = ([]byte)(*c.Settings)
+		settings = *c.Settings
 	}
 	rawConfig, err := outboundConfigLoader.LoadWithID(settings, c.Protocol)
 	if err != nil {
