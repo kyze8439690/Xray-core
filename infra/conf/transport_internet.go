@@ -18,7 +18,6 @@ import (
 	"github.com/xtls/xray-core/transport/internet"
 	httpheader "github.com/xtls/xray-core/transport/internet/headers/http"
 	"github.com/xtls/xray-core/transport/internet/http"
-	"github.com/xtls/xray-core/transport/internet/kcp"
 	"github.com/xtls/xray-core/transport/internet/quic"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/tcp"
@@ -43,80 +42,6 @@ var (
 		"http": func() interface{} { return new(Authenticator) },
 	}, "type", "")
 )
-
-type KCPConfig struct {
-	Mtu             *uint32         `json:"mtu"`
-	Tti             *uint32         `json:"tti"`
-	UpCap           *uint32         `json:"uplinkCapacity"`
-	DownCap         *uint32         `json:"downlinkCapacity"`
-	Congestion      *bool           `json:"congestion"`
-	ReadBufferSize  *uint32         `json:"readBufferSize"`
-	WriteBufferSize *uint32         `json:"writeBufferSize"`
-	HeaderConfig    json.RawMessage `json:"header"`
-	Seed            *string         `json:"seed"`
-}
-
-// Build implements Buildable.
-func (c *KCPConfig) Build() (proto.Message, error) {
-	config := new(kcp.Config)
-
-	if c.Mtu != nil {
-		mtu := *c.Mtu
-		if mtu < 576 || mtu > 1460 {
-			return nil, newError("invalid mKCP MTU size: ", mtu).AtError()
-		}
-		config.Mtu = &kcp.MTU{Value: mtu}
-	}
-	if c.Tti != nil {
-		tti := *c.Tti
-		if tti < 10 || tti > 100 {
-			return nil, newError("invalid mKCP TTI: ", tti).AtError()
-		}
-		config.Tti = &kcp.TTI{Value: tti}
-	}
-	if c.UpCap != nil {
-		config.UplinkCapacity = &kcp.UplinkCapacity{Value: *c.UpCap}
-	}
-	if c.DownCap != nil {
-		config.DownlinkCapacity = &kcp.DownlinkCapacity{Value: *c.DownCap}
-	}
-	if c.Congestion != nil {
-		config.Congestion = *c.Congestion
-	}
-	if c.ReadBufferSize != nil {
-		size := *c.ReadBufferSize
-		if size > 0 {
-			config.ReadBuffer = &kcp.ReadBuffer{Size: size * 1024 * 1024}
-		} else {
-			config.ReadBuffer = &kcp.ReadBuffer{Size: 512 * 1024}
-		}
-	}
-	if c.WriteBufferSize != nil {
-		size := *c.WriteBufferSize
-		if size > 0 {
-			config.WriteBuffer = &kcp.WriteBuffer{Size: size * 1024 * 1024}
-		} else {
-			config.WriteBuffer = &kcp.WriteBuffer{Size: 512 * 1024}
-		}
-	}
-	if len(c.HeaderConfig) > 0 {
-		headerConfig, _, err := kcpHeaderLoader.Load(c.HeaderConfig)
-		if err != nil {
-			return nil, newError("invalid mKCP header config.").Base(err).AtError()
-		}
-		ts, err := headerConfig.(Buildable).Build()
-		if err != nil {
-			return nil, newError("invalid mKCP header config").Base(err).AtError()
-		}
-		config.HeaderConfig = serial.ToTypedMessage(ts)
-	}
-
-	if c.Seed != nil {
-		config.Seed = &kcp.EncryptionSeed{Seed: *c.Seed}
-	}
-
-	return config, nil
-}
 
 type TCPConfig struct {
 	HeaderConfig        json.RawMessage `json:"header"`
@@ -678,7 +603,6 @@ type StreamConfig struct {
 	TLSSettings    *TLSConfig          `json:"tlsSettings"`
 	XTLSSettings   *XTLSConfig         `json:"xtlsSettings"`
 	TCPSettings    *TCPConfig          `json:"tcpSettings"`
-	KCPSettings    *KCPConfig          `json:"kcpSettings"`
 	WSSettings     *WebSocketConfig    `json:"wsSettings"`
 	HTTPSettings   *HTTPConfig         `json:"httpSettings"`
 	QUICSettings   *QUICConfig         `json:"quicSettings"`
@@ -739,16 +663,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 		}
 		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
 			ProtocolName: "tcp",
-			Settings:     serial.ToTypedMessage(ts),
-		})
-	}
-	if c.KCPSettings != nil {
-		ts, err := c.KCPSettings.Build()
-		if err != nil {
-			return nil, newError("Failed to build mKCP config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "mkcp",
 			Settings:     serial.ToTypedMessage(ts),
 		})
 	}
