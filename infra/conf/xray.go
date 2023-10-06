@@ -263,7 +263,6 @@ type Config struct {
 
 	LogConfig       *LogConfig             `json:"log"`
 	RouterConfig    *RouterConfig          `json:"routing"`
-	DNSConfig       *DNSConfig             `json:"dns"`
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
@@ -300,9 +299,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.RouterConfig != nil {
 		c.RouterConfig = o.RouterConfig
-	}
-	if o.DNSConfig != nil {
-		c.DNSConfig = o.DNSConfig
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
@@ -402,14 +398,6 @@ func (c *Config) Build() (*core.Config, error) {
 			return nil, err
 		}
 		config.App = append(config.App, serial.ToTypedMessage(routerConfig))
-	}
-
-	if c.DNSConfig != nil {
-		dnsApp, err := c.DNSConfig.Build()
-		if err != nil {
-			return nil, newError("failed to parse DNS config").Base(err)
-		}
-		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
 	}
 
 	var inbounds []InboundDetourConfig
