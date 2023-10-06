@@ -18,9 +18,6 @@ import (
 	// Fix dependency cycle caused by core import in internet package
 	_ "github.com/xtls/xray-core/transport/internet/tagged/taggedimpl"
 
-	// Developer preview features
-	_ "github.com/xtls/xray-core/app/observatory"
-
 	// Inbound and outbound proxies.
 	_ "github.com/xtls/xray-core/proxy/http"
 	_ "github.com/xtls/xray-core/proxy/socks"
