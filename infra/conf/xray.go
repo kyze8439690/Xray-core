@@ -18,7 +18,6 @@ import (
 
 var (
 	inboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"dokodemo-door": func() interface{} { return new(DokodemoConfig) },
 		"http":          func() interface{} { return new(HTTPServerConfig) },
 		"socks":         func() interface{} { return new(SocksServerConfig) },
 		"vless":         func() interface{} { return new(VLessInboundConfig) },
@@ -258,9 +257,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	rawConfig, err := inboundConfigLoader.LoadWithID(settings, c.Protocol)
 	if err != nil {
 		return nil, newError("failed to load inbound detour config.").Base(err)
-	}
-	if dokodemoConfig, ok := rawConfig.(*DokodemoConfig); ok {
-		receiverSettings.ReceiveOriginalDestination = dokodemoConfig.Redirect
 	}
 	ts, err := rawConfig.(Buildable).Build()
 	if err != nil {
