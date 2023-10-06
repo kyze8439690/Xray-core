@@ -9,8 +9,6 @@ import (
 	"github.com/xtls/xray-core/transport/internet/headers/srtp"
 	"github.com/xtls/xray-core/transport/internet/headers/tls"
 	"github.com/xtls/xray-core/transport/internet/headers/utp"
-	"github.com/xtls/xray-core/transport/internet/headers/wireguard"
-	"google.golang.org/protobuf/proto"
 )
 
 type NoOpAuthenticator struct{}
@@ -35,25 +33,6 @@ type UTPAuthenticator struct{}
 
 func (UTPAuthenticator) Build() (proto.Message, error) {
 	return new(utp.Config), nil
-}
-
-type WireguardAuthenticator struct{}
-
-func (WireguardAuthenticator) Build() (proto.Message, error) {
-	return new(wireguard.WireguardConfig), nil
-}
-
-type DNSAuthenticator struct {
-	Domain string `json:"domain"`
-}
-
-func (v *DNSAuthenticator) Build() (proto.Message, error) {
-	config := new(dns.Config)
-	config.Domain = "www.baidu.com"
-	if len(v.Domain) > 0 {
-		config.Domain = v.Domain
-	}
-	return config, nil
 }
 
 type DTLSAuthenticator struct{}
