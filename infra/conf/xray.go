@@ -377,7 +377,6 @@ type Config struct {
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
-	Policy          *PolicyConfig          `json:"policy"`
 	Metrics         *MetricsConfig         `json:"metrics"`
 	Reverse         *ReverseConfig         `json:"reverse"`
 }
@@ -419,9 +418,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
-	}
-	if o.Policy != nil {
-		c.Policy = o.Policy
 	}
 	if o.Metrics != nil {
 		c.Metrics = o.Metrics
@@ -541,14 +537,6 @@ func (c *Config) Build() (*core.Config, error) {
 			return nil, newError("failed to parse DNS config").Base(err)
 		}
 		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
-	}
-
-	if c.Policy != nil {
-		pc, err := c.Policy.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(pc))
 	}
 
 	if c.Reverse != nil {
