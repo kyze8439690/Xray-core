@@ -299,9 +299,8 @@ func ControlOnConnSetup(network string, address string, s uintptr) error {
 		log.Println(err)
 		return err
 	}
-	if n != 1 {
-		log.Println("Failed to protect fd: ", fd)
-		err := fmt.Errorf("Failed to protect fd:  %d", fd)
+	if n != 1 || dummy[0] != 0 {
+		err := fmt.Errorf("failed to protect fd: %d", fd)
 		return err
 	}
 
