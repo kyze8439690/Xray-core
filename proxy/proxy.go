@@ -23,10 +23,8 @@ import (
 	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/common/signal"
 	"github.com/xtls/xray-core/features/routing"
-	"github.com/xtls/xray-core/features/stats"
 	"github.com/xtls/xray-core/transport"
 	"github.com/xtls/xray-core/transport/internet"
-	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
 )
@@ -439,39 +437,32 @@ func XtlsFilterTls(buffer buf.MultiBuffer, trafficState *TrafficState, ctx conte
 	}
 }
 
-// UnwrapRawConn support unwrap stats, tls, utls, reality and proxyproto conn and get raw tcp conn from it
-func UnwrapRawConn(conn net.Conn) (net.Conn, stats.Counter, stats.Counter) {
-	var readCounter, writerCounter stats.Counter
+// UnwrapRawConn support unwrap stats, tls, utls and proxyproto conn and get raw tcp conn from it
+func UnwrapRawConn(conn net.Conn) net.Conn {
 	if conn != nil {
 		statConn, ok := conn.(*stat.CounterConnection)
 		if ok {
 			conn = statConn.Connection
-			readCounter = statConn.ReadCounter
-			writerCounter = statConn.WriteCounter
 		}
 		if xc, ok := conn.(*tls.Conn); ok {
 			conn = xc.NetConn()
 		} else if utlsConn, ok := conn.(*tls.UConn); ok {
 			conn = utlsConn.NetConn()
-		} else if realityConn, ok := conn.(*reality.Conn); ok {
-			conn = realityConn.NetConn()
-		} else if realityUConn, ok := conn.(*reality.UConn); ok {
-			conn = realityUConn.NetConn()
 		}
 		if pc, ok := conn.(*proxyproto.Conn); ok {
 			conn = pc.Raw()
 			// 8192 > 4096, there is no need to process pc's bufReader
 		}
 	}
-	return conn, readCounter, writerCounter
+	return conn
 }
 
 // CopyRawConnIfExist use the most efficient copy method.
 // - If caller don't want to turn on splice, do not pass in both reader conn and writer conn
 // - writer are from *transport.Link
 func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net.Conn, writer buf.Writer, timer signal.ActivityUpdater) error {
-	readerConn, readCounter, _ := UnwrapRawConn(readerConn)
-	writerConn, _, writeCounter := UnwrapRawConn(writerConn)
+	readerConn = UnwrapRawConn(readerConn)
+	writerConn = UnwrapRawConn(writerConn)
 	reader := buf.NewReader(readerConn)
 	if inbound := session.InboundFromContext(ctx); inbound != nil {
 		if tc, ok := writerConn.(*net.TCPConn); ok && readerConn != nil && writerConn != nil && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
@@ -480,13 +471,7 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 					newError("CopyRawConn splice").WriteToLog(session.ExportIDToError(ctx))
 					//runtime.Gosched() // necessary
 					time.Sleep(time.Millisecond) // without this, there will be a rare ssl error for freedom splice
-					w, err := tc.ReadFrom(readerConn)
-					if readCounter != nil {
-						readCounter.Add(w)
-					}
-					if writeCounter != nil {
-						writeCounter.Add(w)
-					}
+					_, err := tc.ReadFrom(readerConn)
 					if err != nil && errors.Cause(err) != io.EOF {
 						return err
 					}
@@ -494,9 +479,6 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 				}
 				buffer, err := reader.ReadMultiBuffer()
 				if !buffer.IsEmpty() {
-					if readCounter != nil {
-						readCounter.Add(int64(buffer.Len()))
-					}
 					timer.Update()
 					if werr := writer.WriteMultiBuffer(buffer); werr != nil {
 						return werr
@@ -509,7 +491,7 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 		}
 	}
 	newError("CopyRawConn readv").WriteToLog(session.ExportIDToError(ctx))
-	if err := buf.Copy(reader, writer, buf.UpdateActivity(timer), buf.AddToStatCounter(readCounter)); err != nil {
+	if err := buf.Copy(reader, writer, buf.UpdateActivity(timer), buf.AddToStatCounter()); err != nil {
 		return newError("failed to process response").Base(err)
 	}
 	return nil

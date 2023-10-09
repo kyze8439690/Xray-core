@@ -96,28 +96,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 					},
 				}
 			}
-			if config.XudpConcurrency < 0 {
-				h.xudp = &mux.ClientManager{Enabled: false}
-			}
-			if config.XudpConcurrency == 0 {
-				h.xudp = nil // same as before
-			}
-			if config.XudpConcurrency > 0 {
-				h.xudp = &mux.ClientManager{
-					Enabled: true,
-					Picker: &mux.IncrementalWorkerPicker{
-						Factory: &mux.DialingWorkerFactory{
-							Proxy:  proxyHandler,
-							Dialer: h,
-							Strategy: mux.ClientStrategy{
-								MaxConcurrency: uint32(config.XudpConcurrency),
-								MaxConnection:  128,
-							},
-						},
-					},
-				}
-			}
-			h.udp443 = config.XudpProxyUDP443
 		}
 	}
 
@@ -146,28 +124,11 @@ func (h *Handler) Dispatch(ctx context.Context, link *transport.Link) {
 				common.Interrupt(link.Writer)
 			}
 		}
-		if outbound.Target.Network == net.Network_UDP && outbound.Target.Port == 443 {
-			switch h.udp443 {
-			case "reject":
-				test(newError("XUDP rejected UDP/443 traffic").AtInfo())
-				return
-			case "skip":
-				goto out
-			}
-		}
-		if h.xudp != nil && outbound.Target.Network == net.Network_UDP {
-			if !h.xudp.Enabled {
-				goto out
-			}
-			test(h.xudp.Dispatch(ctx, link))
-			return
-		}
 		if h.mux.Enabled {
 			test(h.mux.Dispatch(ctx, link))
 			return
 		}
 	}
-out:
 	err := h.proxy.Process(ctx, link, h)
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, context.Canceled) {

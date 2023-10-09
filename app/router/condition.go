@@ -1,7 +1,6 @@
 package router
 
 import (
-	"regexp"
 	"strings"
 
 	"github.com/xtls/xray-core/features/routing"

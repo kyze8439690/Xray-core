@@ -57,9 +57,6 @@ func NewClient(
 	ctx context.Context,
 	ns *NameServer,
 	clientIP net.IP,
-	container router.GeoIPMatcherContainer,
-	matcherInfos *[]*DomainMatcherInfo,
-	updateDomainRule func(strmatcher.Matcher, int, []*DomainMatcherInfo) error,
 ) (*Client, error) {
 	client := &Client{}
 

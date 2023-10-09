@@ -2,16 +2,12 @@ package conf
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"math"
 	"net/url"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
-	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/platform/filesystem"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/transport/internet"

@@ -1,8 +1,6 @@
 package conf
 
 import (
-	"runtime"
-
 	"github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/proxy/trojan"

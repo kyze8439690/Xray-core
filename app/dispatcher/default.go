@@ -4,7 +4,6 @@ package dispatcher
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -160,7 +159,7 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 		ctx = session.ContextWithContent(ctx, content)
 	}
 
-	inbound, outbound := d.getLink(ctx, destination.Network)
+	inbound, outbound := d.getLink(ctx)
 	go d.routedDispatch(ctx, outbound, destination)
 	return inbound, nil
 }
