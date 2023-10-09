@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/xtls/xray-core/app/router"
-	"google.golang.org/protobuf/proto"
 )
 
 type RouterRulesConfig struct {

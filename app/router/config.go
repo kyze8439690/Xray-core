@@ -1,10 +1,6 @@
 package router
 
 import (
-	"regexp"
-	"strings"
-
-	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/features/routing"
 )
 

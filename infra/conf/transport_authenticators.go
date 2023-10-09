@@ -3,8 +3,8 @@ package conf
 import (
 	"sort"
 
-	"github.com/xtls/xray-core/transport/internet/headers/dns"
 	"github.com/xtls/xray-core/transport/internet/headers/http"
+	"google.golang.org/protobuf/proto"
 )
 
 type AuthenticatorRequest struct {

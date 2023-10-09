@@ -72,6 +72,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/sagernet/sing/common/control"
 	"github.com/xtls/xray-core/common/cmdarg"
 	"github.com/xtls/xray-core/common/platform"
 	"github.com/xtls/xray-core/core"
@@ -238,40 +239,41 @@ func getConfigFormat() string {
 	return f
 }
 
-func ControlOnConnSetup(network string, address string, s uintptr) error {
-	fd := int(s)
-	path := "protect_path"
+func ControlOnConnSetup(network, address string, conn syscall.RawConn) error {
+    return control.Raw(conn, func(fd uintptr) error {
+        path := "protect_path"
 
-	socket, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+        socket, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+        if err != nil {
+            log.Println(err)
+            return err
+        }
 
-	defer syscall.Close(socket)
+        defer syscall.Close(socket)
 
-	C.set_timeout(C.int(socket))
+        C.set_timeout(C.int(socket))
 
-	err = syscall.Connect(socket, &syscall.SockaddrUnix{Name: path})
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+        err = syscall.Connect(socket, &syscall.SockaddrUnix{Name: path})
+        if err != nil {
+            log.Println(err)
+            return err
+        }
 
-	C.ancil_send_fd(C.int(socket), C.int(fd))
+        C.ancil_send_fd(C.int(socket), C.int(fd))
 
-	dummy := []byte{1}
-	n, err := syscall.Read(socket, dummy)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	if n != 1 || dummy[0] != 0 {
-		err := fmt.Errorf("failed to protect fd: %d", fd)
-		return err
-	}
+        dummy := []byte{1}
+        n, err := syscall.Read(socket, dummy)
+        if err != nil {
+            log.Println(err)
+            return err
+        }
+        if n != 1 || dummy[0] != 0 {
+            err := fmt.Errorf("failed to protect fd: %d", fd)
+            return err
+        }
 
-	return nil
+        return nil
+    })
 }
 
 func registerControlFunc() {
