@@ -14,6 +14,7 @@ import (
 
 type VMessAccount struct {
 	ID          string `json:"id"`
+	AlterIds    uint16 `json:"alterId"`
 	Security    string `json:"security"`
 	Experiments string `json:"experiments"`
 }
@@ -36,12 +37,26 @@ func (a *VMessAccount) Build() *vmess.Account {
 		st = protocol.SecurityType_AUTO
 	}
 	return &vmess.Account{
-		Id: a.ID,
+		Id:      a.ID,
+		AlterId: uint32(a.AlterIds),
 		SecuritySettings: &protocol.SecurityConfig{
 			Type: st,
 		},
 		TestsEnabled: a.Experiments,
 	}
+}
+
+type VMessDetourConfig struct {
+	ToTag string `json:"to"`
+}
+
+type FeaturesConfig struct {
+	Detour *VMessDetourConfig `json:"detour"`
+}
+
+type VMessDefaultConfig struct {
+	AlterIDs uint16 `json:"alterId"`
+	Level    byte   `json:"level"`
 }
 
 type VMessOutboundTarget struct {
