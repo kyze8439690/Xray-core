@@ -3,9 +3,9 @@ package net
 func (n Network) SystemString() string {
 	switch n {
 	case Network_TCP:
-		return "tcp"
+		return "tcp4"
 	case Network_UDP:
-		return "udp"
+		return "udp4"
 	case Network_UNIX:
 		return "unix"
 	default:
