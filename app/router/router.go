@@ -28,7 +28,6 @@ type Route struct {
 
 // Init initializes the Router.
 func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm outbound.Manager, dispatcher routing.Dispatcher) error {
-	r.domainStrategy = config.DomainStrategy
 	r.dns = d
 
 	r.rules = make([]*Rule, 0, len(config.Rule))
